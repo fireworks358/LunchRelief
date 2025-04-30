@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lunch Relief Request Portal</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6f8;
+      margin: 0;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      width: 100%;
+    }
+
+    h1, h2 {
+      color: #333;
+      margin-bottom: 1rem;
+      font-size: 1.4rem;
+      text-align: center;
+    }
+
+    input {
+      padding: 0.7rem;
+      width: 100%;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 0.7rem 1rem;
+      margin: 0.3rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 48%;
+    }
+
+    .btn-row {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .request-btn {
+      background-color: #007bff;
+      color: white;
+    }
+
+    .cancel-btn {
+      background-color: #dc3545;
+      color: white;
+    }
+
+    .complete-btn {
+      background-color: #28a745;
+      color: white;
+      font-size: 0.85rem;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 1rem;
+    }
+
+    li {
+      background-color: #f0f0f0;
+      margin: 0.5rem 0;
+      padding: 0.8rem;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .emergency {
+      background-color: #fff3cd !important;
+      border: 1px solid #ffc107;
+    }
+
+    .left {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      flex: 1 1 60%;
+    }
+
+    .timestamp {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 0.2rem;
+    }
+
+    @media (max-width: 480px) {
+      li {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .complete-btn {
+        width: 100%;
+        margin-top: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Lunch Relief Request Portal</h1>
+    <input id="nameInput" type="text" placeholder="Enter your theatre (e.g., E14)" />
+    <div class="btn-row">
+      <button class="request-btn" onclick="requestRelief()">Request</button>
+      <button class="cancel-btn" onclick="cancelRequest()">Cancel</button>
+    </div>
+    <h2>Currently Waiting</h2>
+    <ul id="queueList"></ul>
+  </div>
+
+  <script>
+    const emergencyList = ["E14", "E13", "E17", "E18"];
+    let queue = JSON.parse(localStorage.getItem('reliefQueue')) || [];
+
+    function formatTimeElapsed(ms) {
+      const mins = Math.floor(ms / 60000);
+      const secs = Math.floor((ms % 60000) / 1000);
+      return `${mins}m ${secs < 10 ? '0' : ''}${secs}s ago`;
+    }
+
+    function updateQueueDisplay() {
+      const list = document.getElementById("queueList");
+      list.innerHTML = "";
+
+      const emergency = emergencyList
+        .map(code => queue.find(p => p.name.toUpperCase() === code))
+        .filter(Boolean);
+
+      const regular = queue
+        .filter(p => !emergencyList.includes(p.name.toUpperCase()))
+        .sort((a, b) => a.time - b.time);
+
+      const sortedQueue = [...emergency, ...regular];
+
+      sortedQueue.forEach((person) => {
+        const li = document.createElement("li");
+        const isEmergency = emergencyList.includes(person.name.toUpperCase());
+        if (isEmergency) li.classList.add("emergency");
+
+        const leftDiv = document.createElement("div");
+        leftDiv.className = "left";
+
+        const timeString = formatTimeElapsed(Date.now() - person.time);
+        leftDiv.innerHTML = `<strong>${person.name}</strong><span class="timestamp" data-time="${person.time}">${timeString}</span>`;
+
+        const completeBtn = document.createElement("button");
+        completeBtn.className = "complete-btn";
+        completeBtn.innerHTML = "Complete?";
+        completeBtn.onclick = () => {
+          queue = queue.filter(p => p.name !== person.name);
+          updateQueueDisplay();
+        };
+
+        li.appendChild(leftDiv);
+        li.appendChild(completeBtn);
+        list.appendChild(li);
+      });
+
+      localStorage.setItem('reliefQueue', JSON.stringify(queue));
+    }
+
+    function refreshTimeStamps() {
+      document.querySelectorAll(".timestamp").forEach(span => {
+        const time = parseInt(span.getAttribute("data-time"));
+        span.textContent = formatTimeElapsed(Date.now() - time);
+      });
+    }
+
+    function requestRelief() {
+      const name = document.getElementById("nameInput").value.trim();
+      if (name && !queue.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+        queue.push({ name, time: Date.now() });
+        updateQueueDisplay();
+      }
+    }
+
+    function cancelRequest() {
+      const name = document.getElementById("nameInput").value.trim();
+      queue = queue.filter(p => p.name.toLowerCase() !== name.toLowerCase());
+      updateQueueDisplay();
+    }
+
+    // Initial load
+    updateQueueDisplay();
+    setInterval(refreshTimeStamps, 30000); // Update timestamps every 30 seconds
+  </script>
+</body>
+</html> 
