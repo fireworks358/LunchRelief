@@ -4,6 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lunch Relief Request Portal</title>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBm1ofp8Ohgaqeuti_5sp-X4DRq3ydXu4g",
+      authDomain: "lunchrelief.firebaseapp.com",
+      projectId: "lunchrelief",
+      storageBucket: "lunchrelief.firebasestorage.app",
+      messagingSenderId: "48664234954",
+      appId: "1:48664234954:web:43c19ab18ee51a46c31d33",
+      databaseURL: "https://lunchrelief-default-rtdb.firebaseio.com"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+  </script>
+
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -22,9 +41,23 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       max-width: 500px;
       width: 100%;
+      position: relative;
     }
 
-    h1, h2 {
+    .qr-fixed {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      width: 120px;
+    }
+
+    @media (max-width: 768px) {
+      .qr-fixed {
+        display: none;
+      }
+    }
+
+    h1, h2, h3 {
       color: #333;
       margin-bottom: 1rem;
       font-size: 1.4rem;
@@ -48,13 +81,12 @@
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      width: 48%;
     }
 
     .btn-row {
       display: flex;
-      #justify-content: space-between;
       flex-wrap: wrap;
+      justify-content: space-between;
     }
 
     .request-btn {
@@ -72,6 +104,16 @@
       color: white;
       font-size: 0.85rem;
     }
+
+    .theatre-btn {
+      width: 30%;
+      margin: 0.2rem;
+      color: white;
+    }
+
+    .etheatre { background-color: #0069d9; }
+    .dtheatre { background-color: #6f42c1; }
+    .special  { background-color: #20c997; }
 
     ul {
       list-style: none;
@@ -112,12 +154,17 @@
       margin-right: 2rem;
     }
 
+    hr {
+      margin: 1.5rem 0;
+      border: none;
+      border-top: 1px solid #ddd;
+    }
+
     @media (max-width: 480px) {
       li {
         flex-direction: column;
         align-items: flex-start;
       }
-
       .complete-btn {
         width: 100%;
         margin-top: 0.5rem;
@@ -126,20 +173,43 @@
   </style>
 </head>
 <body>
+  <!-- QR Code for Desktop Display -->
+  <img src="qr-code.jpg" alt="QR Code" class="qr-fixed" />
+
   <div class="container">
     <h1>Lunch Relief Request Portal</h1>
+
+    <h2>Quick Add</h2>
+    <button class="request-btn" onclick="toggleLunchPanel()">Require Lunch?</button>
+    <div id="lunchPanel" style="display:none; margin-top: 1rem;">
+      <h3 style="margin-bottom: 0.2rem;">E Theatres</h3>
+      <div class="btn-row" id="etheatreButtons"></div>
+      <h3 style="margin-bottom: 0.2rem;">D Theatres</h3>
+      <div class="btn-row" id="dtheatreButtons"></div>
+      <h3 style="margin-bottom: 0.2rem;">Other</h3>
+      <div class="btn-row" id="specialButtons"></div>
+    </div>
+
+    <hr />
+
     <input id="nameInput" type="text" placeholder="Enter your theatre (e.g., E14)" />
     <div class="btn-row">
       <button class="request-btn" onclick="requestRelief()">Request</button>
       <button class="cancel-btn" onclick="cancelRequest()">Cancel</button>
     </div>
+
     <h2>Currently Waiting</h2>
     <ul id="queueList"></ul>
   </div>
 
   <script>
     const emergencyList = ["E14", "E13", "E17", "E18"];
-    let queue = JSON.parse(localStorage.getItem('reliefQueue')) || [];
+    let queue = [];
+
+    firebase.database().ref('queue').on('value', snapshot => {
+      queue = snapshot.val() ? Object.values(snapshot.val()) : [];
+      updateQueueDisplay();
+    });
 
     function formatTimeElapsed(ms) {
       const mins = Math.floor(ms / 60000);
@@ -171,24 +241,22 @@
 
         const timeString = formatTimeElapsed(Date.now() - person.time);
         leftDiv.innerHTML = `
-		<div><strong>${person.name}</strong></div>
-		<br>
-		<div class="timestamp" data-time="${person.time}">${timeString}</div>`;
+          <div><strong>${person.name}</strong></div>
+          <br>
+          <div class="timestamp" data-time="${person.time}">${timeString}</div>`;
 
         const completeBtn = document.createElement("button");
         completeBtn.className = "complete-btn";
         completeBtn.innerHTML = "Complete?";
         completeBtn.onclick = () => {
           queue = queue.filter(p => p.name !== person.name);
-          updateQueueDisplay();
+          firebase.database().ref('queue').set(queue);
         };
 
         li.appendChild(leftDiv);
         li.appendChild(completeBtn);
         list.appendChild(li);
       });
-
-      localStorage.setItem('reliefQueue', JSON.stringify(queue));
     }
 
     function refreshTimeStamps() {
@@ -202,19 +270,55 @@
       const name = document.getElementById("nameInput").value.trim();
       if (name && !queue.some(p => p.name.toLowerCase() === name.toLowerCase())) {
         queue.push({ name, time: Date.now() });
-        updateQueueDisplay();
+        firebase.database().ref('queue').set(queue);
       }
     }
 
     function cancelRequest() {
       const name = document.getElementById("nameInput").value.trim();
       queue = queue.filter(p => p.name.toLowerCase() !== name.toLowerCase());
-      updateQueueDisplay();
+      firebase.database().ref('queue').set(queue);
     }
 
-    // Initial load
-    updateQueueDisplay();
-    setInterval(refreshTimeStamps, 30000); // Update timestamps every 30 seconds
+    function toggleLunchPanel() {
+      const panel = document.getElementById("lunchPanel");
+      panel.style.display = panel.style.display === "none" ? "block" : "none";
+    }
+
+    function createButton(name, className) {
+      const btn = document.createElement("button");
+      btn.className = `theatre-btn ${className}`;
+      btn.textContent = name;
+      btn.onclick = () => {
+        if (!queue.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+          queue.push({ name, time: Date.now() });
+          firebase.database().ref('queue').set(queue);
+        }
+        document.getElementById("lunchPanel").style.display = "none";
+      };
+      return btn;
+    }
+
+    function generateLunchButtons() {
+      const eContainer = document.getElementById("etheatreButtons");
+      const dContainer = document.getElementById("dtheatreButtons");
+      const specialContainer = document.getElementById("specialButtons");
+
+      for (let i = 1; i <= 22; i++) {
+        eContainer.appendChild(createButton(`E${i}`, 'etheatre'));
+      }
+
+      for (let i = 1; i <= 7; i++) {
+        dContainer.appendChild(createButton(`D${i}`, 'dtheatre'));
+      }
+
+      ['Maternity', 'Gastro', 'IR'].forEach(name => {
+        specialContainer.appendChild(createButton(name, 'special'));
+      });
+    }
+
+    generateLunchButtons();
+    setInterval(refreshTimeStamps, 30000);
   </script>
 </body>
-</html> 
+</html>
