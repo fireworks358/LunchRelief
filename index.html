@@ -173,7 +173,6 @@
   </style>
 </head>
 <body>
-  <!-- QR Code for Desktop Display -->
   <img src="qrcode.png" alt="QR Code" class="qr-fixed" />
 
   <div class="container">
@@ -207,7 +206,8 @@
     let queue = [];
 
     firebase.database().ref('queue').on('value', snapshot => {
-      queue = snapshot.val() ? Object.values(snapshot.val()) : [];
+      const data = snapshot.val();
+      queue = data ? Object.entries(data).map(([id, entry]) => ({ id, ...entry })) : [];
       updateQueueDisplay();
     });
 
@@ -249,8 +249,7 @@
         completeBtn.className = "complete-btn";
         completeBtn.innerHTML = "Complete?";
         completeBtn.onclick = () => {
-          queue = queue.filter(p => p.name !== person.name);
-          firebase.database().ref('queue').set(queue);
+          firebase.database().ref(`queue/${person.id}`).remove();
         };
 
         li.appendChild(leftDiv);
@@ -269,15 +268,17 @@
     function requestRelief() {
       const name = document.getElementById("nameInput").value.trim();
       if (name && !queue.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-        queue.push({ name, time: Date.now() });
-        firebase.database().ref('queue').set(queue);
+        const newEntry = { name, time: Date.now() };
+        firebase.database().ref('queue').push(newEntry);
       }
     }
 
     function cancelRequest() {
       const name = document.getElementById("nameInput").value.trim();
-      queue = queue.filter(p => p.name.toLowerCase() !== name.toLowerCase());
-      firebase.database().ref('queue').set(queue);
+      const person = queue.find(p => p.name.toLowerCase() === name.toLowerCase());
+      if (person) {
+        firebase.database().ref(`queue/${person.id}`).remove();
+      }
     }
 
     function toggleLunchPanel() {
@@ -291,8 +292,7 @@
       btn.textContent = name;
       btn.onclick = () => {
         if (!queue.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-          queue.push({ name, time: Date.now() });
-          firebase.database().ref('queue').set(queue);
+          firebase.database().ref('queue').push({ name, time: Date.now() });
         }
         document.getElementById("lunchPanel").style.display = "none";
       };
