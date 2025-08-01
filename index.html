@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lunch Relief Request Portal</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -176,7 +177,7 @@
   <img src="qrcode.png" alt="QR Code" class="qr-fixed" />
 
   <div class="container">
-    <h1>Lunch Relief Request Portal</h1>
+    <h1>Anaesthetics Lunch Request Portal</h1>
 
     <h2>Quick Add</h2>
     <button class="request-btn" onclick="toggleLunchPanel()">Require Lunch?</button>
@@ -191,11 +192,6 @@
 
     <hr />
 
-    <input id="nameInput" type="text" placeholder="Enter your theatre (e.g., E14)" />
-    <div class="btn-row">
-      <button class="request-btn" onclick="requestRelief()">Request</button>
-      <button class="cancel-btn" onclick="cancelRequest()">Cancel</button>
-    </div>
 
     <h2>Currently Waiting</h2>
     <ul id="queueList"></ul>
